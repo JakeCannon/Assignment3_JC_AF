@@ -31,5 +31,19 @@
             android:stretchMode="columnWidth"
             android:verticalSpacing="0dp"
             android:background="@color/darkish_grey" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:onClick="startStopRecord"
+            android:id="@+id/startrecord"
+            android:text="Start/Stop Recording" />
+        <androidx.appcompat.widget.AppCompatButton
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:onClick="PlayRecorded"
+            android:id="@+id/playrecord"
+            android:text="Playback Recording" />
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
