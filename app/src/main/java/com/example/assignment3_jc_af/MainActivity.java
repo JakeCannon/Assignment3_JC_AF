@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = "AudioRecordTest";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
+    private static final int WRITE_EXTERNAL_STORAGE = 1;
     //private static String fileName = null;
 
     //private RecordButton recordButton = null;
@@ -77,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Requesting permission to RECORD_AUDIO
     //private boolean permissionToRecordAccepted = false;
-    private String [] permissions = {Manifest.permission.RECORD_AUDIO};
+    private String [] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
 
     //private ArrayList<String> files;
@@ -102,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
         //fileName += "/audiorecordtest.3gp";
 
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
+        ActivityCompat.requestPermissions(this, permissions, WRITE_EXTERNAL_STORAGE);
 
 //        LinearLayout ll = new LinearLayout(this);
 //        recordButton = new RecordButton(this);
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean CheckAudioPermission() {
-        return ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        return ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
     private void alterDocument(Uri uri) {
@@ -157,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
         if (audioUri != null) {
             player = new MediaPlayer();
             try {
-                player.setDataSource(audioUri.getPath());
+                player.setDataSource(getApplicationContext(), audioUri);
                 player.prepare();
                 player.start();
             } catch (IOException e) {
@@ -229,10 +231,10 @@ public class MainActivity extends AppCompatActivity {
         try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
             recorder = new MediaRecorder();
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             recorder.setOutputFile(pfd.getFileDescriptor());
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            System.out.println(audioUri.getPath());
             try {
                 recorder.prepare();
             } catch (IOException e) {
