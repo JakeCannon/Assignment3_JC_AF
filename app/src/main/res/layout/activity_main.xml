@@ -32,18 +32,28 @@
             android:verticalSpacing="0dp"
             android:background="@color/darkish_grey" />
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:onClick="startStopRecord"
-            android:id="@+id/startrecord"
-            android:text="Start/Stop Recording" />
-        <androidx.appcompat.widget.AppCompatButton
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:onClick="PlayRecorded"
-            android:id="@+id/playrecord"
-            android:text="Playback Recording" />
+    </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/startrecord"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:onClick="startStopRecord"
+            android:text="Start Recording" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/playrecord"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:onClick="PlayRecorded"
+            android:text="Playback Recording" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
