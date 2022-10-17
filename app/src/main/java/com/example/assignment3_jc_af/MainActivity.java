@@ -4,10 +4,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.ActivityCompat;
+import androidx.documentfile.provider.DocumentFile;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -20,6 +22,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.media.PlaybackParams;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -38,6 +41,7 @@ import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -64,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private TileAdapter mTileAdapter;
 
     // initial amount of tiles in grid view
-    private static int NTILES = 1;
+    private static int NTILES = 13;
 
     // default amount of columns - set later depending on device orientation
     private static int NCOLS = 3;
@@ -92,6 +96,8 @@ public class MainActivity extends AppCompatActivity {
 
     private String fileName = "";
 
+    private SeekBar seekBarPitch;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,11 +115,13 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
         ActivityCompat.requestPermissions(this, permissions, WRITE_EXTERNAL_STORAGE);
-        try {
-            populateDefaultAudioClips();
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        seekBarPitch = findViewById(R.id.seekBarPitch);
+        seekBarPitch.setMax(20);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            seekBarPitch.setMin(1);
         }
+        seekBarPitch.setProgress(10);
     }
 
     private boolean CheckAudioPermission() {
@@ -180,156 +188,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void populateDefaultAudioClips() throws IOException {
-        resolver = getApplicationContext().getContentResolver();
-        Uri uri;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
-            uri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
-        } else {
-            uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        }
-        //int numOfAudioClips = 13;
-//        Field[] fields = R.raw.class.getFields();
-//        for (Field field : fields) {
-//            //R.raw.Applause
-//            newAudioTrack = new ContentValues();
-//            newAudioTrack.put(MediaStore.Audio.Media.DISPLAY_NAME, field.getName());
-//            //newAudioTrack.put(R.raw.Applause);
-//            resolver.insert(uri, newAudioTrack);
-//        }
-        //Field[] fields = R.raw.class.getFields();
-        //for (Field field : fields) {
-
-        // create dummy file to create the directory
-//        newAudioTrack = new ContentValues();
-//        newAudioTrack.put(MediaStore.Audio.Media.DISPLAY_NAME, "Recorded Clip.mp3");
-//        //System.out.println(uri);
-//        audioUri = resolver.insert(uri, newAudioTrack);
-//        try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
-//
-//        }
-
-            //File dir = new File(uri.getPath());
-
-        // create dummy directory to prevent crash
-        File file = new File(uri.getPath());
-        if (!file.exists()) {
-            file.mkdir();
-        }
-
-
-//        try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
-//
-//
-//        }
-
-        // transfer raw files to directory for default clips
-
-//        AssetManager mngr = getAssets();
-//        InputStream path = mngr.open("music/music1.mp3");
-//
-//        BufferedInputStream bis = new BufferedInputStream(path,1024);
-//        //get the bytes one by one
-//        int current = 0;
-//
-//        while ((current = bis.read()) != -1) {
-//
-//            baf.append((byte) current);
-//        }
-//    }
-//    byte[] bitmapdata  = baf.toByteArray();
-
-        //File test = new File(R.raw.applause);
-//        InputStream in = getResources().openRawResource(R.raw.applause);
-//        InputStreamReader inr = new InputStreamReader(in);
-//        BufferedReader br = new BufferedReader(inr, 8192);
-//        FileOutputStream out = new FileOutputStream(uri.getPath());
-//        try {
-//            String test;
-//            while (true){
-//                test = br.readLine();
-//                // readLine() returns null if no more lines in the file
-//                if(test == null) break;
-//                tv.append("\n"+"    "+test);
-//            }
-//            inr.close();
-//            in.close();
-//            br.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        tv.append("\n\nThat is all");
-
-//        System.out.println("URI IS: " + uri.getPath());
-//        byte[] buff = new byte[1024 * 1024 * 10];
-//        int read = 0;
-//        try {
-//            while ((read = in.read(buff)) > 0) {
-//                out.write(buff, 0, read);
-//            }
-//        } finally {
-//            in.close();
-//            out.close();
-//        }
-        //copyFiletoExternalStorage(R.raw.applause, "Applause.mp3");
-    }
-
-    private void copyFiletoExternalStorage(int resourceId, String resourceName){
-        String pathSDCard = Environment.getExternalStorageDirectory() + "/Android/data/" + resourceName;
-        try{
-            InputStream in = getResources().openRawResource(resourceId);
-            FileOutputStream out = null;
-            out = new FileOutputStream(pathSDCard);
-            byte[] buff = new byte[1024];
-            int read = 0;
-            try {
-                while ((read = in.read(buff)) > 0) {
-                    out.write(buff, 0, read);
-                }
-            } finally {
-                in.close();
-                out.close();
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void createFileFromAudio() {
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter File Name");
-
-        // Set up the input
-        final EditText input = new EditText(getApplicationContext());
-        // Specify the type of input expected
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        builder.setView(input);
-        // Set up the buttons
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                fileName = input.getText().toString();
-                //System.out.println(input.getText().toString());
-                //System.out.println(newAudioTrack.get(MediaStore.Audio.Media.DISPLAY_NAME));
-            }
-        });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                fileName = input.getText().toString();
-                dialog.cancel();
-            }
-
-        });
-
-        fileName = input.getText().toString();
-        //System.out.println(newAudioTrack.get(MediaStore.Audio.Media.DISPLAY_NAME));
-        builder.show();
-
-
+        EditText editTextFileName = findViewById(R.id.editTextFileName);
+        fileName = editTextFileName.getText().toString();
+        fileName = fileName + ".mp3";
         resolver = getApplicationContext().getContentResolver();
 
         Uri uri;
@@ -338,22 +200,40 @@ public class MainActivity extends AppCompatActivity {
         } else {
             uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         }
+        //File path = new File(String.valueOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI) + "/audio_clips/");
+        //File path = new File(uri.getPath() + "/audio_clips/");
 
+        //uri = Uri.fromFile(path);
+        //uri = uri + Uri.parse("/audio_clips/");
+        //Uri.Builder.appendPath()
+
+        //Uri appendedUri = uri.buildUpon().appendPath("audio_clips").build();
+        //System.out.println(uri.buildUpon().appendPath("audio_clips").build());
+
+//        String uriString = uri.toString() + "/audio_clips/";
+//        Uri appendedUri = Uri.parse(uriString);
+//        System.out.println(appendedUri.getPath().toString());
+//        System.out.println(uri.getPath().toString());
+        //Uri.fromFile(new File(uri.getPath()+"/audio_clips/"));
+
+        //String folder = "audio_clips";
+//        DocumentFile dir = DocumentFile.fromTreeUri(getApplicationContext(), uri);
+//        if (dir != null) {
+//            DocumentFile nFolder = dir.createDirectory(folder);
+//        }
+//        File file = new File(Environment.getExternalStorageDirectory(), folder);
+//        if(!file.exists())
+//        {
+//            file.mkdirs();
+//        }
         newAudioTrack = new ContentValues();
-
-
-
         newAudioTrack.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
-        System.out.println(fileName);
-        //newAudioTrack.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
 
         // make sure file not accessible until its finished being written
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             newAudioTrack.put(MediaStore.Audio.Media.IS_PENDING, 1);
         }
-        //System.out.println(uri);
         audioUri = resolver.insert(uri, newAudioTrack);
-        //System.out.println(audioUri);
 
         try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
             recorder = new MediaRecorder();
@@ -391,7 +271,6 @@ public class MainActivity extends AppCompatActivity {
 
     boolean mStartPlaying = true;
     public void PlayRecorded(View view) {
-
         onPlay(mStartPlaying);
         if (mStartPlaying) {
             ((AppCompatButton)view).setText("Stop playing");
@@ -403,14 +282,18 @@ public class MainActivity extends AppCompatActivity {
 
     boolean mStartRecording = true;
     public void startStopRecord(View view) {
+        EditText editTextFileName = findViewById(R.id.editTextFileName);
         if (CheckAudioPermission()) {
-            onRecord(mStartRecording);
-            if (mStartRecording) {
-                ((AppCompatButton)view).setText("Stop recording");
-            } else {
-                ((AppCompatButton)view).setText("Start recording");
+            // make sure a file name is given before starting recording
+            if (!editTextFileName.getText().toString().equals("")) {
+                onRecord(mStartRecording);
+                if (mStartRecording) {
+                    ((AppCompatButton) view).setText("Stop recording");
+                } else {
+                    ((AppCompatButton) view).setText("Start recording");
+                }
+                mStartRecording = !mStartRecording;
             }
-            mStartRecording = !mStartRecording;
         } else {
             //startPermissionRequest(new )
             ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
@@ -438,28 +321,16 @@ public class MainActivity extends AppCompatActivity {
         } else {
             externalUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         }
-
-        //Uri externalUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
         String[] projection = {
                 MediaStore.Files.FileColumns._ID,
                 MediaStore.Audio.Media.DATE_ADDED,
                 MediaStore.Audio.Media.DISPLAY_NAME
-                //MediaStore.Images.Media.DATE_ADDED,
-                //MediaStore.MediaColumns.TITLE,
-                //MediaStore.Images.Media.MIME_TYPE,
-                //MediaStore.MediaColumns.RELATIVE_PATH,
-                //MediaStore.Images.Media.ORIENTATION
         };
-        mCursor = getApplicationContext().getContentResolver().query(externalUri, projection, null, null, MediaStore.Audio.Media.DATE_ADDED + " DESC");
+        mCursor = getApplicationContext().getContentResolver().query(externalUri, projection, null, null, MediaStore.Audio.Media.DATE_ADDED);
 
         // set adapter for tile data
         mTileAdapter = new TileAdapter();
         gridView.setAdapter(mTileAdapter);
-        // on click listener for click event of photo tile
-//        gridView.setOnItemClickListener(((adapterView, view, i, l) -> {
-//            // do something when clicked on
-//            System.out.println("clicked on one");
-//        }));
     }
 
     // view adapter to create tiles for the audio clips
@@ -546,8 +417,9 @@ public class MainActivity extends AppCompatActivity {
                     //nameView.setText(returnCursor.getString(nameIndex));
                     //sizeView.setText(Long.toString(returnCursor.getLong(sizeIndex)));
                     //audioButton.setText(cursor.getString(nameIndex));
-                    NTILES = 13;
-
+                    //NTILES = 13;
+                    PlaybackParams params = new PlaybackParams();
+                    //System.out.println(seekBarPitch.getProgress());
                     switch (i) {
                         case 0:
                             audioButton.setText("Applause");
@@ -555,6 +427,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.applause);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -565,6 +440,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.bicycle_bell);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -575,6 +453,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.boooooo);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -585,6 +466,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.cheering);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -595,6 +479,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.duck);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -605,6 +492,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.fanfare);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -615,6 +505,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.gong);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -625,6 +518,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.gunshot);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -635,6 +531,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.hail_to_the_king);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -645,6 +544,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.i_feel_good);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -655,6 +557,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.laugh);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -665,6 +570,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.ricochet);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -675,6 +583,9 @@ public class MainActivity extends AppCompatActivity {
                                 public void onClick(View v) {
                                     MediaPlayer playerDefault;
                                     playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.sheep);
+                                    float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                    params.setPitch(pitch);
+                                    playerDefault.setPlaybackParams(params);
                                     playerDefault.start();
                                 }
                             });
@@ -683,10 +594,50 @@ public class MainActivity extends AppCompatActivity {
                             audioButton.setText("Clip");
                     }
 
+                    // get count of how many audio clips there are to know how many tiles to add to defaults
+                    mCursor.moveToLast();
+                    NTILES = 13 + mCursor.getPosition();
+
+                    // Add on user files once defaults have been generated
+                    if (i >= 13) {
+                        // Create a tile for each audio file
+                        mCursor.moveToPosition(i-12);
+                        String id;
+                        //String imageOrientation;
+                        InputStream is = null;
+                        id=mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID));
+                        String fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
+                        audioButton.setText(fileName);
+                        audioUri=ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                                                mCursor.getInt(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)));
+                        audioButton.setOnClickListener(new View.OnClickListener() {
+                            public void onClick(View v) {
+                                MediaPlayer playerUser = MediaPlayer.create(getApplicationContext(), audioUri);
+                                //try {
+                                    //playerUser.setDataSource(getApplicationContext(), audioUri);
+                                    //playerUser.prepare();
+                                float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+                                params.setPitch(pitch);
+                                playerUser.setPlaybackParams(params);
+                                playerUser.start();
+                                //} catch (IOException e) {
+                                //    Log.e(LOG_TAG, "prepare() failed");
+                                //}
+                                //MediaPlayer playerDefault;
+                                //playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.laugh);
+                                //playerDefault.start();
+                            }
+                        });
+                        //imageOrientation = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Images.Media.ORIENTATION));
+                        //Bitmap bitmap = null;
+                        //try {
+//                        is=getContentResolver().openInputStream(Uri.withAppendedPath(MediaStore.Images.Media.
+//                                EXTERNAL_CONTENT_URI,id));
+                    }
 
 
 
-                    return mediaPath.getPath();
+                    return null;
                 }
             }.execute(vh);//executeOnExecutor(mExecutor,vh);
             return convertView;

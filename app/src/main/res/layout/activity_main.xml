@@ -7,15 +7,41 @@
     tools:context=".MainActivity">
 
     <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:orientation="horizontal"
+        android:translationZ="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Pitch"
+            android:textAlignment="center"
+            android:textAllCaps="false"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <SeekBar
+            android:id="@+id/seekBarPitch"
+            android:layout_width="300sp"
+            android:layout_height="30dp"
+            android:translationZ="10dp" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="1dp"
         android:layout_marginTop="1dp"
-        android:layout_marginEnd="1dp"
-        android:layout_marginBottom="1dp"
-        android:orientation="vertical"
         android:background="@color/darkish_grey"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -25,22 +51,37 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_margin="2dp"
+            android:background="@color/darkish_grey"
             android:clipChildren="false"
             android:horizontalSpacing="0dp"
             android:numColumns="4"
             android:stretchMode="columnWidth"
-            android:verticalSpacing="0dp"
-            android:background="@color/darkish_grey" />
+            android:verticalSpacing="0dp" />
 
     </LinearLayout>
 
     <LinearLayout
-        android:layout_width="fill_parent"
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:layout_gravity="bottom"
+        android:background="@color/dark_grey"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
+
+        <EditText
+            android:id="@+id/editTextFileName"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:ems="10"
+            android:gravity="start|top"
+            android:hint="Filename"
+            android:inputType="textMultiLine"
+            android:textAlignment="center"
+            android:textColor="@color/white"
+            android:textColorHint="@color/white" />
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/startrecord"
@@ -49,11 +90,6 @@
             android:onClick="startStopRecord"
             android:text="Start Recording" />
 
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/playrecord"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:onClick="PlayRecorded"
-            android:text="Playback Recording" />
     </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
