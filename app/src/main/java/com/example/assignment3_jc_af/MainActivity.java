@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
         seekBarPitch = findViewById(R.id.seekBarPitch);
         seekBarPitch.setMax(20);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            seekBarPitch.setMin(1);
+            seekBarPitch.setMin(2);
         }
         seekBarPitch.setProgress(10);
     }
@@ -601,7 +601,7 @@ public class MainActivity extends AppCompatActivity {
                     // Add on user files once defaults have been generated
                     if (i >= 13) {
                         // Create a tile for each audio file
-                        mCursor.moveToPosition(i-12);
+                        mCursor.moveToPosition(i-13);
                         String id;
                         //String imageOrientation;
                         InputStream is = null;
