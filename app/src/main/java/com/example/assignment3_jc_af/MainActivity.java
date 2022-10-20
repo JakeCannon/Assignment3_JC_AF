@@ -82,9 +82,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
     private static final int WRITE_EXTERNAL_STORAGE = 1;
 
-    private MediaRecorder recorder = null;
+    private MediaRecorder recorder = new MediaRecorder();
 
-    private MediaPlayer player = null;
+    private MediaPlayer player = new MediaPlayer();
 
     private ContentResolver resolver;
 
@@ -97,6 +97,8 @@ public class MainActivity extends AppCompatActivity {
     private String fileName = "";
 
     private SeekBar seekBarPitch;
+    boolean playingBack = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -234,6 +236,7 @@ public class MainActivity extends AppCompatActivity {
             newAudioTrack.put(MediaStore.Audio.Media.IS_PENDING, 1);
         }
         audioUri = resolver.insert(uri, newAudioTrack);
+        System.out.println("Writing to: " + audioUri);
 
         try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
             recorder = new MediaRecorder();
@@ -269,18 +272,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    boolean mStartPlaying = true;
-    public void PlayRecorded(View view) {
-        onPlay(mStartPlaying);
-        if (mStartPlaying) {
-            ((AppCompatButton)view).setText("Stop playing");
+//    boolean mStartPlaying = true;
+//    public void PlayRecorded(View view) {
+//        onPlay(mStartPlaying);
+//        if (mStartPlaying) {
+//            ((AppCompatButton)view).setText("Stop playing");
+//        } else {
+//            ((AppCompatButton)view).setText("Start playing");
+//        }
+//        mStartPlaying = !mStartPlaying;
+//    }
+
+    @SuppressLint({"UseCompatLoadingForColorStateLists", "SetTextI18n"})
+    public void buttonFunctionality(View view) {
+        if (player.isPlaying()) {
+            player.stop();
+            ((AppCompatButton) view).setBackgroundTintList(getResources().getColorStateList(R.color.red));
+            ((AppCompatButton) view).setText("Start recording");
         } else {
-            ((AppCompatButton)view).setText("Start playing");
+            startStopRecord(view);
         }
-        mStartPlaying = !mStartPlaying;
     }
 
     boolean mStartRecording = true;
+    @SuppressLint("SetTextI18n")
     public void startStopRecord(View view) {
         EditText editTextFileName = findViewById(R.id.editTextFileName);
         if (CheckAudioPermission()) {
@@ -295,10 +310,28 @@ public class MainActivity extends AppCompatActivity {
                 mStartRecording = !mStartRecording;
             }
         } else {
-            //startPermissionRequest(new )
             ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
         }
     }
+
+    @SuppressLint("UseCompatLoadingForColorStateLists, SetTextI18n")
+    void enablePausePlayback() {
+        Button multiButton = findViewById(R.id.startrecord);
+        System.out.println(player.isPlaying());
+        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer arg0) {
+                multiButton.setBackgroundTintList(getResources().getColorStateList(R.color.red));
+                multiButton.setText("Start recording");
+            }
+        });
+        if (player.isPlaying()) {
+            multiButton.setBackgroundTintList(getResources().getColorStateList(R.color.blue));
+            multiButton.setText("Stop playback");
+        }
+
+    }
+
 
     @Override
     protected void onResume() {
@@ -331,6 +364,29 @@ public class MainActivity extends AppCompatActivity {
         // set adapter for tile data
         mTileAdapter = new TileAdapter();
         gridView.setAdapter(mTileAdapter);
+//        gridView.setOnItemClickListener(((adapterView, view, i, l) -> {
+//            String fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
+//            System.out.println(fileName);
+//            audioUri=ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+//                    mCursor.getInt(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)));
+//            System.out.println("reading from: " + audioUri);
+//            MediaPlayer playerUser = MediaPlayer.create(getApplicationContext(), audioUri);
+//            //try {
+//            //playerUser.setDataSource(getApplicationContext(), audioUri);
+//            //playerUser.prepare();
+//            float pitch = (float)seekBarPitch.getProgress() / 10.0f;
+//            //params.setPitch(pitch);
+//            //playerUser.setPlaybackParams(params);
+//            playerUser.start();
+//            //} catch (IOException e) {
+//            //    Log.e(LOG_TAG, "prepare() failed");
+//            //}
+//            //MediaPlayer playerDefault;
+//            //playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.laugh);
+//            //playerDefault.start();
+//        }));
+        //audioButton.setOnClickListener(new View.OnClickListener() {
+            //public void onClick(View v) {
     }
 
     // view adapter to create tiles for the audio clips
@@ -339,6 +395,7 @@ public class MainActivity extends AppCompatActivity {
         class ViewHolder {
             int position;
             ImageView image;
+            Button audioButton;
         }
 
         @Override
@@ -383,7 +440,8 @@ public class MainActivity extends AppCompatActivity {
             vh.image.setMaxHeight(gridView.getWidth() / NCOLS);
             vh.image.setMinimumHeight(gridView.getWidth() / NCOLS);
 
-            Button audioButton = convertView.findViewById(R.id.button);
+            //Button audioButton = convertView.findViewById(R.id.button);
+            vh.audioButton = convertView.findViewById(R.id.button);
 
 
             //FileDescriptor fd = getResources().openRawResourceFd(R.raw.applause).getFileDescriptor();
@@ -402,8 +460,7 @@ public class MainActivity extends AppCompatActivity {
 
             // load default media
             new AsyncTask<ViewHolder,Void,String>() {
-                private ViewHolder vh;
-                Uri mediaPath = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.applause);
+
                 @Override
                 protected String doInBackground(ViewHolder... viewHolders) {
                     //String mimeType = getContentResolver().getType(mediaPath);
@@ -422,176 +479,176 @@ public class MainActivity extends AppCompatActivity {
                     //System.out.println(seekBarPitch.getProgress());
                     switch (i) {
                         case 0:
-                            audioButton.setText("Applause");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Applause");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.applause);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.applause);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 1:
-                            audioButton.setText("Bicycle Bell");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Bicycle Bell");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.bicycle_bell);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.bicycle_bell);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 2:
-                            audioButton.setText("Boooooo");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Boooooo");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.boooooo);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.boooooo);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 3:
-                            audioButton.setText("Cheering");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Cheering");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.cheering);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.cheering);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 4:
-                            audioButton.setText("Duck");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Duck");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.duck);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.duck);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 5:
-                            audioButton.setText("Fanfare");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Fanfare");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.fanfare);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.fanfare);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 6:
-                            audioButton.setText("Gong");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Gong");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.gong);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.gong);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 7:
-                            audioButton.setText("Gunshot");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Gunshot");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.gunshot);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.gunshot);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 8:
-                            audioButton.setText("Hail to the king");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Hail to the king");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.hail_to_the_king);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.hail_to_the_king);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 9:
-                            audioButton.setText("I feel good");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("I feel good");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.i_feel_good);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.i_feel_good);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 10:
-                            audioButton.setText("Laugh");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Laugh");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.laugh);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.laugh);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 11:
-                            audioButton.setText("Ricochet");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Ricochet");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.ricochet);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.ricochet);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         case 12:
-                            audioButton.setText("Sheep");
-                            audioButton.setOnClickListener(new View.OnClickListener() {
+                            vh.audioButton.setText("Sheep");
+                            vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                 public void onClick(View v) {
-                                    MediaPlayer playerDefault;
-                                    playerDefault = MediaPlayer.create(getApplicationContext(), R.raw.sheep);
+                                    player = MediaPlayer.create(getApplicationContext(), R.raw.sheep);
                                     float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                     params.setPitch(pitch);
-                                    playerDefault.setPlaybackParams(params);
-                                    playerDefault.start();
+                                    player.setPlaybackParams(params);
+                                    player.start();
+                                    enablePausePlayback();
                                 }
                             });
                             break;
                         default:
-                            audioButton.setText("Clip");
+                            vh.audioButton.setText("Clip");
                     }
 
                     // get count of how many audio clips there are to know how many tiles to add to defaults
@@ -601,25 +658,29 @@ public class MainActivity extends AppCompatActivity {
                     // Add on user files once defaults have been generated
                     if (i >= 13) {
                         // Create a tile for each audio file
-                        mCursor.moveToPosition(i-13);
-                        String id;
-                        //String imageOrientation;
-                        InputStream is = null;
-                        id=mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID));
+                        mCursor.moveToPosition(i-12);
+                        // get file name for each audio file for each tile generated
                         String fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
-                        audioButton.setText(fileName);
-                        audioUri=ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                                                mCursor.getInt(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)));
-                        audioButton.setOnClickListener(new View.OnClickListener() {
+                        vh.audioButton.setText(fileName);
+                        // make each audio button on user sound tiles have on click listener
+                        vh.audioButton.setOnClickListener(new View.OnClickListener() {
                             public void onClick(View v) {
-                                MediaPlayer playerUser = MediaPlayer.create(getApplicationContext(), audioUri);
+                                // move cursor back to the exact tile they click on (after generating on screen tiles)
+                                mCursor.moveToPosition(i-12);
+                                //System.out.println(mCursor.getPosition());
+                                // get audioUri for specific tile button clicked on
+                                audioUri=ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                                        mCursor.getInt(mCursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)));
+                                // play the track
+                                player = MediaPlayer.create(getApplicationContext(), audioUri);
                                 //try {
                                     //playerUser.setDataSource(getApplicationContext(), audioUri);
                                     //playerUser.prepare();
                                 float pitch = (float)seekBarPitch.getProgress() / 10.0f;
                                 params.setPitch(pitch);
-                                playerUser.setPlaybackParams(params);
-                                playerUser.start();
+                                player.setPlaybackParams(params);
+                                player.start();
+                                enablePausePlayback();
                                 //} catch (IOException e) {
                                 //    Log.e(LOG_TAG, "prepare() failed");
                                 //}
