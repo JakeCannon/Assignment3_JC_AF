@@ -1,25 +1,17 @@
 package com.example.assignment3_jc_af;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.ActivityCompat;
-import androidx.documentfile.provider.DocumentFile;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.PlaybackParams;
@@ -27,11 +19,8 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
-import android.provider.OpenableColumns;
-import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -43,34 +32,20 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Switch;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 
 // 159336 Mobile Application Development
 // Assignment 3 - Voice Recorder / Soundboard App
 // Name: Jake Cannon - ID: 20008958
 // Name: Arnold Fruish  - ID: 19028792
 
-//IDEAS:
-// could try filter by comparing filenames until a match - test performance of this
-// allow user to change sorting of files to get their recordings near the top
-// maybe have different colour for default files
-// allow toggling of default files
+// KNOWN ISSUE:
+// App sometimes crashes when init() is called - when toggling the switch for default values or reopening the app
+// I think its to do with the speed at which certain things are updated in the two threads with the
+// do in background method...
 
 public class MainActivity extends AppCompatActivity {
 
@@ -88,49 +63,39 @@ public class MainActivity extends AppCompatActivity {
     // Cursor for use in MainAcvitiy for sound bites
     private Cursor mCursor;
 
-    private static final String LOG_TAG = "AudioRecordTest";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
     private static final int WRITE_EXTERNAL_STORAGE = 1;
 
+    // recorder and player for recording and playing audio files
     private MediaRecorder recorder = new MediaRecorder();
-
     private MediaPlayer player = new MediaPlayer();
 
     private ContentResolver resolver;
-
     private Uri audioUri;
-
     private ContentValues newAudioTrack;
-
-    private String [] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
+    private final String [] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private String fileName = "";
-
     private SeekBar seekBarPitch;
-
     private boolean displayDefaults = true;
 
-    private Switch showDefaultsSwitch;
-
+    // Setup Actionbar toggle switch for default files
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.mainmenu, menu);
         MenuItem item = menu.findItem(R.id.myswitch);
         item.setActionView(R.layout.actionbar_switch);
 
-        showDefaultsSwitch = item.getActionView().findViewById(R.id.switchForActionBar);
+        @SuppressLint("UseSwitchCompatOrMaterialCode")
+        Switch showDefaultsSwitch = item.getActionView().findViewById(R.id.switchForActionBar);
         showDefaultsSwitch.setChecked(true);
         showDefaultsSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                // do something based on isChecked
+                // when switch is toggled, toggle display of default audio clips
                 displayDefaults = !displayDefaults;
-                System.out.println(displayDefaults);
-                init();
+                init(); // reinitialise to reflect the new changes
             }
         });
-        //return true;
-        //return true;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -152,22 +117,59 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
         ActivityCompat.requestPermissions(this, permissions, WRITE_EXTERNAL_STORAGE);
 
+        // initialise seekbar for pitch scale of audio playback
         seekBarPitch = findViewById(R.id.seekBarPitch);
         seekBarPitch.setMax(20);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             seekBarPitch.setMin(2);
         }
         seekBarPitch.setProgress(10);
-
-        //showDefaultsSwitch = findViewById(R.id.switchForActionBar);
-        //showDefaultsSwitch.setChecked(true);
-        //System.out.println(showDefaultsSwitch.isChecked());
     }
 
+    // Method to setup new recording and stop current one
+    boolean mStartRecording = true;
+    @SuppressLint("SetTextI18n")
+    public void startStopRecord(View view) {
+        // get the file name to save the new recording as
+        EditText editTextFileName = findViewById(R.id.editTextFileName);
+        if (CheckAudioPermission()) {
+            // make sure a file name is given before starting recording
+            if (!editTextFileName.getText().toString().equals("")) {
+                onRecord(mStartRecording);
+                // Toggle display of button between start/stop recording when pressed
+                if (mStartRecording) {
+                    ((AppCompatButton) view).setText("Stop recording");
+                } else {
+                    ((AppCompatButton) view).setText("Start recording");
+                }
+                mStartRecording = !mStartRecording;
+            }
+        } else {
+            // if they don't have permissions, request them
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
+        }
+    }
+
+    // method to decide functionality of button press (multifunction)
+    @SuppressLint({"UseCompatLoadingForColorStateLists", "SetTextI18n"})
+    public void buttonFunctionality(View view) {
+        // if a track is playing in progress, pressing the button will stop it
+        if (player.isPlaying()) {
+            player.stop();
+            // reset button back to previous appearance ready for next recording
+            ((AppCompatButton) view).setBackgroundTintList(getResources().getColorStateList(R.color.red));
+            ((AppCompatButton) view).setText("Start recording");
+        } else {
+            startStopRecord(view);
+        }
+    }
+
+    // used in stop/start record method, checks if app has required permissions to make a recording
     private boolean CheckAudioPermission() {
         return ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
+    // method to start or stop recording
     private void onRecord(boolean start) {
         if (start) {
             startRecording();
@@ -188,6 +190,7 @@ public class MainActivity extends AppCompatActivity {
         init();
     }
 
+    // make sure when recorder/player is stopped to release and reset it
     @Override
     public void onStop() {
         super.onStop();
@@ -201,44 +204,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Method to write recorded audio to a file
     private void createFileFromAudio() {
+        // setup format for filename to include extension
         EditText editTextFileName = findViewById(R.id.editTextFileName);
         fileName = editTextFileName.getText().toString();
         fileName = fileName + ".mp3";
         resolver = getApplicationContext().getContentResolver();
 
+        // setup uri to store audio clip in phone's storage
         Uri uri;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
             uri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         } else {
             uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         }
-        //File path = new File(String.valueOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI) + "/audio_clips/");
-        //File path = new File(uri.getPath() + "/audio_clips/");
-
-        //uri = Uri.fromFile(path);
-        //uri = uri + Uri.parse("/audio_clips/");
-        //Uri.Builder.appendPath()
-
-        //Uri appendedUri = uri.buildUpon().appendPath("audio_clips").build();
-        //System.out.println(uri.buildUpon().appendPath("audio_clips").build());
-
-//        String uriString = uri.toString() + "/audio_clips/";
-//        Uri appendedUri = Uri.parse(uriString);
-//        System.out.println(appendedUri.getPath().toString());
-//        System.out.println(uri.getPath().toString());
-        //Uri.fromFile(new File(uri.getPath()+"/audio_clips/"));
-
-        //String folder = "audio_clips";
-//        DocumentFile dir = DocumentFile.fromTreeUri(getApplicationContext(), uri);
-//        if (dir != null) {
-//            DocumentFile nFolder = dir.createDirectory(folder);
-//        }
-//        File file = new File(Environment.getExternalStorageDirectory(), folder);
-//        if(!file.exists())
-//        {
-//            file.mkdirs();
-//        }
         newAudioTrack = new ContentValues();
         newAudioTrack.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
 
@@ -247,8 +227,8 @@ public class MainActivity extends AppCompatActivity {
             newAudioTrack.put(MediaStore.Audio.Media.IS_PENDING, 1);
         }
         audioUri = resolver.insert(uri, newAudioTrack);
-        System.out.println("Writing to: " + audioUri);
 
+        // write the file to phone's storage
         try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(audioUri, "w", null)) {
             recorder = new MediaRecorder();
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -261,9 +241,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 recorder.prepare();
             } catch (IOException e) {
-                Log.e(LOG_TAG, "prepare() failed");
+                Log.e("recorder", "prepare() failed");
             }
-
             recorder.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -283,48 +262,20 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @SuppressLint({"UseCompatLoadingForColorStateLists", "SetTextI18n"})
-    public void buttonFunctionality(View view) {
-        if (player.isPlaying()) {
-            player.stop();
-            ((AppCompatButton) view).setBackgroundTintList(getResources().getColorStateList(R.color.red));
-            ((AppCompatButton) view).setText("Start recording");
-        } else {
-            startStopRecord(view);
-        }
-    }
-
-    boolean mStartRecording = true;
-    @SuppressLint("SetTextI18n")
-    public void startStopRecord(View view) {
-        EditText editTextFileName = findViewById(R.id.editTextFileName);
-        if (CheckAudioPermission()) {
-            // make sure a file name is given before starting recording
-            if (!editTextFileName.getText().toString().equals("")) {
-                onRecord(mStartRecording);
-                if (mStartRecording) {
-                    ((AppCompatButton) view).setText("Stop recording");
-                } else {
-                    ((AppCompatButton) view).setText("Start recording");
-                }
-                mStartRecording = !mStartRecording;
-            }
-        } else {
-            ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
-        }
-    }
-
+    // method allows audio to be stopped after it has begun playing back
     @SuppressLint("UseCompatLoadingForColorStateLists, SetTextI18n")
     void enablePausePlayback() {
         Button multiButton = findViewById(R.id.startrecord);
-        System.out.println(player.isPlaying());
+        // listen to when media player is playing a clip
         player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer arg0) {
+                // when its finished playing, reset button to previous appearance
                 multiButton.setBackgroundTintList(getResources().getColorStateList(R.color.red));
                 multiButton.setText("Start recording");
             }
         });
+        // if media player is in use, change button to display as stopping playback if pressed
         if (player.isPlaying()) {
             multiButton.setBackgroundTintList(getResources().getColorStateList(R.color.blue));
             multiButton.setText("Stop playback");
@@ -410,35 +361,37 @@ public class MainActivity extends AppCompatActivity {
             // ensure it is not rotated
             vh.image.setRotationY(0);
             vh.position = i;
-            vh.image.setImageBitmap(null);
 
             // Set image height properties
             vh.image.setMaxHeight(gridView.getWidth() / NCOLS);
             vh.image.setMinimumHeight(gridView.getWidth() / NCOLS);
 
-            //Button audioButton = convertView.findViewById(R.id.button);
             vh.audioButton = convertView.findViewById(R.id.button);
 
-            // load default media
-            new AsyncTask<ViewHolder,Void,String>() {
+            // get audio media as tiles for gridview in asynctask
+            new AsyncTask<ViewHolder,Void,Void>() {
                 @SuppressLint({"UseCompatLoadingForColorStateLists", "SetTextI18n"})
                 @Override
-                protected String doInBackground(ViewHolder... viewHolders) {
+                protected Void doInBackground(ViewHolder... viewHolders) {
                    // player params holds value of pitch slider
                     PlaybackParams params = new PlaybackParams();
+                    // only load default audio if switch is true
                     if (displayDefaults) {
+                        // populate default media for first 13 tiles
                         switch (i) {
                             case 0:
+                                // default audio clips have darker colour
                                 vh.audioButton.setBackgroundTintList(getResources().getColorStateList(R.color.blue_darker));
                                 vh.audioButton.setText("Applause");
                                 vh.audioButton.setOnClickListener(new View.OnClickListener() {
                                     public void onClick(View v) {
+                                        // play associated audio clip with pitch param
                                         player = MediaPlayer.create(getApplicationContext(), R.raw.applause);
                                         float pitch = (float) seekBarPitch.getProgress() / 10.0f;
                                         params.setPitch(pitch);
                                         player.setPlaybackParams(params);
                                         player.start();
-                                        enablePausePlayback();
+                                        enablePausePlayback(); // allow playback to be paused
                                     }
                                 });
                                 break;
@@ -629,21 +582,32 @@ public class MainActivity extends AppCompatActivity {
                                     params.setPitch(pitch);
                                     player.setPlaybackParams(params);
                                     player.start();
-                                    enablePausePlayback();
+                                    enablePausePlayback(); // allow to be paused
                                 }
                             });
                         } else {
                             vh.audioButton.setBackgroundTintList(getResources().getColorStateList(R.color.blue_darker));
                         }
-                    } else {
-                        // get count of how many audio clips there are to know how many tiles to add to defaults
+                    }
+                    // Otherwise do not generate tiles for default media clips and only show phone media
+                    else {
+                        // get count of how many audio clips there are to know how many tiles
                         mCursor.moveToLast();
                         NTILES = mCursor.getPosition();
-                        // Add on user files once defaults have been generated
                         // Create a tile for each audio file
                         mCursor.moveToPosition(i);
                         // get file name for each audio file for each tile generated
-                        String fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
+                        String fileName;
+
+                        // This is a makeshift fix for the app sometimes crashing when toggling the switch
+                        // it catches the out of bounds error that sometimes occurs in this thread
+                        try {
+                            fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
+                        } catch (Exception e){
+                            mCursor.moveToPrevious();
+                            fileName = mCursor.getString(mCursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME));
+                        }
+
                         vh.audioButton.setText(fileName);
                         vh.audioButton.setBackgroundTintList(getResources().getColorStateList(R.color.blue));
                         // make each audio button on user sound tiles have on click listener
